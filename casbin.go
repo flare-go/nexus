@@ -29,12 +29,12 @@ func ProvideEnforcer(c *Core) (*casbin.Enforcer, error) {
 		return nil, fmt.Errorf("無法獲取 Postgres URL")
 	}
 
-	if c.config.Postgres.Username != "" {
-		postgresUrl += fmt.Sprintf("%s:", c.config.Postgres.Username)
+	if c.config.Postgres.Username != "" && c.config.Postgres.Password != "" {
+		postgresUrl += fmt.Sprintf("%s:%s@", c.config.Postgres.Username, c.config.Postgres.Password)
 	}
 
-	if c.config.Postgres.Password != "" {
-		postgresUrl += fmt.Sprintf("%s@", c.config.Postgres.Password)
+	if c.config.Postgres.Username != "" && c.config.Postgres.Password == "" {
+		postgresUrl += fmt.Sprintf("%s@", c.config.Postgres.Username)
 	}
 
 	if c.config.Postgres.Host != "" {
