@@ -10,6 +10,7 @@ import (
 
 	"github.com/nats-io/nats.go"
 	"github.com/redis/go-redis/v9"
+
 	"github.com/stripe/stripe-go/v80"
 	"github.com/stripe/stripe-go/v80/client"
 
@@ -35,21 +36,8 @@ const (
 	DefaultConfigPath = "./configs/config.yaml"
 )
 
-// Core is the main interface for Nexus, providing various services and functionalities
-type Core interface {
-
-	// New initializes all components of Nexus
-	New(ctx context.Context) error
-
-	// LoadConfig loads the configuration from the given path
-	LoadConfig(path string) error
-
-	// Shutdown gracefully shuts down all components
-	Shutdown() error
-}
-
-// core is the implementation of the Core interface
-type core struct {
+// Core is the implementation of the Core interface
+type Core struct {
 
 	// config is the configuration for Nexus
 	config *Config
@@ -76,20 +64,20 @@ type core struct {
 	logger *zap.Logger
 }
 
-func NewCore() Core {
-	c := new(core)
+func NewCore() *Core {
+	c := new(Core)
 
-	if err := c.New(context.Background()); err != nil {
+	if err := c.New(); err != nil {
 		panic(err)
 	}
 	return c
 }
 
-func (c *core) New(ctx context.Context) error {
+func (c *Core) New() error {
 
 	var err error
 
-	if err := c.LoadConfig(DefaultConfigPath); err != nil {
+	if err = c.LoadConfig(DefaultConfigPath); err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
@@ -114,7 +102,7 @@ func (c *core) New(ctx context.Context) error {
 			Password: c.config.Redis.Password,
 			DB:       c.config.Redis.DB,
 		})
-		if err = c.redisClient.Ping(ctx).Err(); err != nil {
+		if err = c.redisClient.Ping(context.Background()).Err(); err != nil {
 			return fmt.Errorf("failed to connect to Redis: %w", err)
 		}
 	}
@@ -149,7 +137,7 @@ func (c *core) New(ctx context.Context) error {
 	return nil
 }
 
-func (c *core) Shutdown() error {
+func (c *Core) Shutdown() error {
 	c.logger.Info("Starting shutdown of all components")
 
 	if c.db != nil {
@@ -170,42 +158,42 @@ func (c *core) Shutdown() error {
 	return nil
 }
 
-func ProvideMode(c *core) Mode {
+func ProvideMode(c *Core) Mode {
 	return c.config.Mode
 }
 
-func ProvideEnvironment(c *core) Environment {
+func ProvideEnvironment(c *Core) Environment {
 	return c.config.Environment
 }
 
-func ProvidePostgresPool(c *core) driver.PostgresPool {
+func ProvidePostgresPool(c *Core) driver.PostgresPool {
 	return c.db.Pool
 }
 
-func ProvideRedis(c *core) *redis.Client {
+func ProvideRedis(c *Core) *redis.Client {
 	return c.redisClient
 }
 
-func ProvideNATSConn(c *core) *nats.Conn {
+func ProvideNATSConn(c *Core) *nats.Conn {
 	return c.natsConn
 }
 
-func ProvideStripeClient(c *core) *client.API {
+func ProvideStripeClient(c *Core) *client.API {
 	return c.stripeClient
 }
 
-func ProvideLogger(c *core) *zap.Logger {
+func ProvideLogger(c *Core) *zap.Logger {
 	return c.logger
 }
 
-func ProvideStorageClient(c *core) *storage.Client {
+func ProvideStorageClient(c *Core) *storage.Client {
 	return c.storageClient
 }
 
-func ProvideStorageBucket(c *core) *storage.BucketHandle {
+func ProvideStorageBucket(c *Core) *storage.BucketHandle {
 	return c.storageBucket
 }
 
-func ProvideConfig(c *core) *Config {
+func ProvideConfig(c *Core) *Config {
 	return c.config
 }

@@ -53,7 +53,7 @@ type Config struct {
 }
 
 // LoadConfig loads the configuration from the given path
-func (c *core) LoadConfig(path string) error {
+func (c *Core) LoadConfig(path string) error {
 
 	// Read the configuration file
 	data, err := os.ReadFile(path)
