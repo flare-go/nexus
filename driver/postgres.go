@@ -73,8 +73,8 @@ type PostgresConfig struct {
 	Host        string `yaml:"host"`
 	Port        string `yaml:"port"`
 	Name        string `yaml:"name"`
-	SSLMode     string `yaml:"sslmode"`
-	SSLRootCert string `yaml:"sslrootcert"`
+	SSLMode     string `yaml:"ssl_mode"`
+	SSLRootCert string `yaml:"ssl_root_cert"`
 	Cluster     string `yaml:"cluster"`
 }
 
