@@ -48,6 +48,9 @@ type Config struct {
 	// Firebase defines the configuration for Firebase
 	Firebase cloud.FirebaseConfig `yaml:"firebase"`
 
+	// Paseto defines the configuration for Paseto
+	Paseto PasetoConfig `yaml:"paseto"`
+
 	// Stripe defines the configuration for Stripe
 	Stripe StripeConfig `yaml:"stripe"`
 }
