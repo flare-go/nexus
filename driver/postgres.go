@@ -111,18 +111,6 @@ func ConnectSQL(config PostgresConfig) (*DB, error) {
 		connStr += fmt.Sprintf("/%s", config.Name)
 	}
 
-	if config.SSLMode != "" {
-		connStr += fmt.Sprintf("?sslmode=%s", config.SSLMode)
-	}
-
-	if config.SSLRootCert != "" {
-		connStr += fmt.Sprintf("&sslrootcert=%s", config.SSLRootCert)
-	}
-
-	if config.Cluster != "" {
-		connStr += fmt.Sprintf("&options=--cluster=%s", config.Cluster)
-	}
-
 	pgConfig, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse connection string: %w", err)
