@@ -125,7 +125,7 @@ func ConnectSQL(config PostgresConfig) (*DB, error) {
 
 	pgConfig, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
-		return nil, fmt.Errorf("解析連接字符串失敗 | failed to parse connection string: %w", err)
+		return nil, fmt.Errorf("failed to parse connection string: %w", err)
 	}
 
 	pgConfig.MaxConns = int32(maxOpenDbConn)
