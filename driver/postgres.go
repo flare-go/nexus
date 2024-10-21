@@ -91,11 +91,11 @@ const maxDbLifetime = 5 * time.Minute
 func ConnectSQL(config PostgresConfig) (*DB, error) {
 	connStr := config.URL
 
-	if config.Username != "" {
-		connStr += fmt.Sprintf("%s:", config.Username)
+	if config.Username != "" && config.Password != "" {
+		connStr += fmt.Sprintf("%s:%s@", config.Username, config.Password)
 	}
 
-	if config.Password != "" {
+	if config.Username != "" && config.Password == "" {
 		connStr += fmt.Sprintf("%s@", config.Password)
 	}
 
