@@ -49,6 +49,18 @@ func ProvideEnforcer(c *Core) (*casbin.Enforcer, error) {
 		postgresUrl += fmt.Sprintf("/%s", c.config.Postgres.Name)
 	}
 
+	if c.config.Postgres.SSLMode != "" {
+		postgresUrl += fmt.Sprintf("?sslmode=%s", c.config.Postgres.SSLMode)
+	}
+
+	if c.config.Postgres.SSLRootCert != "" {
+		postgresUrl += fmt.Sprintf("&sslrootcert=%s", c.config.Postgres.SSLRootCert)
+	}
+
+	if c.config.Postgres.Cluster != "" {
+		postgresUrl += fmt.Sprintf("&options=--cluster=%s", c.config.Postgres.Cluster)
+	}
+
 	// 解析連接字符串
 	opts, err := pg.ParseURL(postgresUrl)
 	if err != nil {
