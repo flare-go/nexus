@@ -3,6 +3,7 @@ package driver
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -123,6 +124,7 @@ func ConnectSQL(config PostgresConfig) (*DB, error) {
 		connStr += fmt.Sprintf("&options=--cluster=%s", config.Cluster)
 	}
 
+	log.Println(connStr)
 	pgConfig, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
 		return nil, fmt.Errorf("解析連接字符串失敗 | failed to parse connection string: %w", err)
