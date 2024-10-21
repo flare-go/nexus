@@ -1,0 +1,50 @@
+mode: local
+
+environment: development
+
+database: postgres
+
+casbin:
+  model_path: "./configs/casbin/rbac_model.conf"
+
+postgres:
+  url: postgres://
+  name: postgres
+  username: postgres
+  password: postgres
+  host: localhost
+  port: 5432
+  ssl_mode: disable
+  ssl_root_cert: ""
+  cluster: ""
+
+cockroach:
+  url: cockroach://
+  name: cockroach
+  username: cockroach
+  password: ""
+  host: localhost
+  port: 26257
+  ssl_mode: disable
+  ssl_root_cert: ""
+  cluster: ""
+
+redis:
+  address: localhost:6379
+  password: ""
+  db: 0
+
+nats:
+  url: nats://localhost:4222
+
+stripe:
+  secret_key: ""
+  webhook_secret: ""
+
+google:
+  service_account_key_path: "./configs/google/google-service-account.json"
+  storage_bucket: ""
+
+firebase:
+  service_account_key_path: "./configs/firebase/google-service-account.json"
+
