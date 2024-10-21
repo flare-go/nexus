@@ -6,11 +6,13 @@ import (
 	"context"
 	"fmt"
 
+	"cloud.google.com/go/storage"
 	"github.com/nats-io/nats.go"
 	"github.com/redis/go-redis/v9"
 	"github.com/stripe/stripe-go/v80"
 	"github.com/stripe/stripe-go/v80/client"
 	"go.uber.org/zap"
+	"google.golang.org/api/option"
 
 	"goflare.io/nexus/driver"
 )
@@ -39,47 +41,54 @@ type Core interface {
 	// LoadConfig loads the configuration from the given path
 	LoadConfig(path string) error
 
-	// Mode returns the running mode of Nexus
-	Mode() Mode
-
-	// Environment returns the running environment of Nexus
-	Environment() Environment
-
-	// DB returns the database connection pool
-	DB() *driver.DB
-
-	// NATSConn returns the NATS connection
-	NATSConn() *nats.Conn
-
-	// StripeClient returns the Stripe client
-	StripeClient() *client.API
-
-	// Logger returns the logger
-	Logger() *zap.Logger
-
-	// Config returns the configuration
-	Config() *Config
-
 	// Shutdown gracefully shuts down all components
 	Shutdown() error
 }
 
+// core is the implementation of the Core interface
 type core struct {
-	config       *Config
-	db           *driver.DB
-	redisClient  *redis.Client
-	natsConn     *nats.Conn
+
+	// config is the configuration for Nexus
+	config *Config
+
+	// db is the database connection pool
+	db *driver.DB
+
+	// redisClient is the Redis client
+	redisClient *redis.Client
+
+	// natsConn is the NATS connection
+	natsConn *nats.Conn
+
+	// stripeClient is the Stripe client
 	stripeClient *client.API
-	logger       *zap.Logger
+
+	// storageClient is the Google Cloud Storage client
+	storageClient *storage.Client
+
+	// storageBucket is the Google Cloud Storage bucket
+	storageBucket *storage.BucketHandle
+
+	// logger is the logger
+	logger *zap.Logger
 }
 
 func NewCore() Core {
-	return &core{}
+	c := new(core)
+
+	if err := c.New(context.Background()); err != nil {
+		panic(err)
+	}
+	return c
 }
 
 func (c *core) New(ctx context.Context) error {
 
 	var err error
+
+	if err := c.LoadConfig(DefaultConfigPath); err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
 
 	c.logger, err = zap.NewProduction()
 	if err != nil {
@@ -121,6 +130,18 @@ func (c *core) New(ctx context.Context) error {
 		c.stripeClient = client.New(c.config.Stripe.SecretKey, nil)
 	}
 
+	if c.config.Google.ServiceAccountKeyPath != "" {
+		client, err := storage.NewClient(context.Background(), option.WithCredentialsFile(c.config.Google.ServiceAccountKeyPath))
+		if err != nil {
+			return nil
+		}
+		c.storageClient = client
+
+		if c.config.Google.StorageBucket != "" {
+			c.storageBucket = c.storageClient.Bucket(c.config.Google.StorageBucket)
+		}
+	}
+
 	c.logger.Info("All components Newd successfully")
 	return nil
 }
@@ -146,34 +167,42 @@ func (c *core) Shutdown() error {
 	return nil
 }
 
-func (c *core) Mode() Mode {
+func ProvideMode(c *core) Mode {
 	return c.config.Mode
 }
 
-func (c *core) Environment() Environment {
+func ProvideEnvironment(c *core) Environment {
 	return c.config.Environment
 }
 
-func (c *core) DB() *driver.DB {
-	return c.db
+func ProvidePostgresPool(c *core) driver.PostgresPool {
+	return c.db.Pool
 }
 
-func (c *core) Redis() *redis.Client {
+func ProvideRedis(c *core) *redis.Client {
 	return c.redisClient
 }
 
-func (c *core) NATSConn() *nats.Conn {
+func ProvideNATSConn(c *core) *nats.Conn {
 	return c.natsConn
 }
 
-func (c *core) StripeClient() *client.API {
+func ProvideStripeClient(c *core) *client.API {
 	return c.stripeClient
 }
 
-func (c *core) Logger() *zap.Logger {
+func ProvideLogger(c *core) *zap.Logger {
 	return c.logger
 }
 
-func (c *core) Config() *Config {
+func ProvideStorageClient(c *core) *storage.Client {
+	return c.storageClient
+}
+
+func ProvideStorageBucket(c *core) *storage.BucketHandle {
+	return c.storageBucket
+}
+
+func ProvideConfig(c *core) *Config {
 	return c.config
 }
