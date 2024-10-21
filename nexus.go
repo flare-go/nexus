@@ -77,13 +77,13 @@ func (c *Core) New() error {
 
 	var err error
 
-	if err = c.LoadConfig(DefaultConfigPath); err != nil {
-		return fmt.Errorf("failed to load config: %w", err)
-	}
-
 	c.logger, err = zap.NewProduction()
 	if err != nil {
 		return fmt.Errorf("failed to New logger: %w", err)
+	}
+
+	if err = c.LoadConfig(DefaultConfigPath); err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	switch c.config.Database {
