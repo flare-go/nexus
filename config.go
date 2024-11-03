@@ -40,7 +40,7 @@ type Config struct {
 	Redis driver.RedisConfig `yaml:"redis"`
 
 	// NATS defines the configuration for NATS
-	NATS driver.NATSConfig `yaml:"nats"`
+	NATS driver.NatsConfig `yaml:"nats"`
 
 	// Google defines the configuration for Google Cloud
 	Google cloud.GoogleConfig `yaml:"google"`
