@@ -203,19 +203,11 @@ func (m *jetStreamNatsManager) publishWithTimeout(ctx context.Context, subject s
 }
 
 func (m *jetStreamNatsManager) Subscribe(subject string, handler nats.MsgHandler, opts ...nats.SubOpt) (*nats.Subscription, error) {
-	opts = m.getSubscriptionNatsOption(subject, opts...)
-
-	sub, err := m.js.Subscribe(subject, handler, opts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to subscribe: %w", err)
-	}
-
-	return sub, nil
+	return m.js.Subscribe(subject, handler, opts...)
 }
 
-func (m *jetStreamNatsManager) getSubscriptionNatsOption(subject string, opts ...nats.SubOpt) []nats.SubOpt {
+func (m *jetStreamNatsManager) getSubscriptionNatsOption(opts ...nats.SubOpt) []nats.SubOpt {
 	defaultOpts := []nats.SubOpt{
-		nats.Durable(m.getDurableName(subject)),
 		nats.ManualAck(),
 		nats.AckWait(5 * time.Second),
 		nats.MaxDeliver(3),
