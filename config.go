@@ -24,6 +24,12 @@ type Config struct {
 	// Mode defines the running mode of Nexus
 	Mode Mode `yaml:"mode"`
 
+	// Server defines the configuration for the server
+	Server ServerConfig `yaml:"server"`
+
+	// Services defines the configuration for the services
+	Services Services `yaml:"services"`
+
 	// Database defines the type of database to use
 	Database Database `yaml:"database"`
 

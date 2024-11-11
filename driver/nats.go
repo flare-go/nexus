@@ -78,7 +78,7 @@ func NewNatsManager(nc *nats.Conn, opts NatsOption) (NatsManager, error) {
 		config: opts.Config,
 	}
 
-	if err := mgr.setupStream(); err != nil {
+	if err = mgr.setupStream(); err != nil {
 		if errors.Is(err, nats.ErrJetStreamNotEnabled) {
 			return nil, fmt.Errorf("jetstream not enabled: %w", err)
 		}
