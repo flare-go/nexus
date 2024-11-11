@@ -1,7 +1,9 @@
 package nexus
 
 type ServerConfig struct {
-	Port int `yaml:"port"`
+	Port            int    `yaml:"port"`
+	LocalUIURL      string `yaml:"local_ui_url"`
+	ProductionUIURL string `yaml:"production_ui_url"`
 }
 
 type Services struct {
