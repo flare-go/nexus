@@ -5,6 +5,10 @@ package nexus
 import (
 	"context"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
@@ -172,6 +176,24 @@ func ProvideLogger(c *Core) *zap.Logger {
 
 func ProvideConfig(c *Core) *Config {
 	return c.config
+}
+
+func ProvideS3(c *Core) (*s3.S3, error) {
+
+	sess, err := session.NewSession(&aws.Config{
+		Credentials:      credentials.NewStaticCredentials(c.config.CloudFlare.AccessKey, c.config.CloudFlare.SecretKey, ""),
+		Region:           aws.String("auto"),
+		Endpoint:         aws.String("https://goflare.io"),
+		S3ForcePathStyle: aws.Bool(true),
+	})
+
+	if err != nil {
+		c.logger.Error("Failed to create session", zap.Error(err))
+		return nil, err
+	}
+
+	// 创建 S3 客户端
+	return s3.New(sess), nil
 }
 
 func ProvideMigration(c *Core) *migrate.Migrate {
