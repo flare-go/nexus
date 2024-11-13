@@ -36,6 +36,9 @@ type Config struct {
 	// Environment defines the running environment of Nexus
 	Environment Environment `yaml:"environment"`
 
+	// Migration defines the configuration for the database migration
+	Migration MigrationConfig `yaml:"migration"`
+
 	// Postgres defines the configuration for the database
 	Postgres driver.PostgresConfig `yaml:"postgres"`
 

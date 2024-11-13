@@ -5,6 +5,9 @@ package nexus
 import (
 	"context"
 	"fmt"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 
 	"cloud.google.com/go/storage"
 
@@ -109,6 +112,7 @@ func (c *Core) New() error {
 
 	if c.config.NATS.URL != "" {
 		c.logger.Info("Using NATS")
+		c.logger.Info(c.config.NATS.URL)
 		c.natsConn, err = nats.Connect(c.config.NATS.URL)
 		if err != nil {
 			return fmt.Errorf("failed to connect to NATS: %w", err)
@@ -196,4 +200,18 @@ func ProvideStorageBucket(c *Core) *storage.BucketHandle {
 
 func ProvideConfig(c *Core) *Config {
 	return c.config
+}
+
+func ProvideMigration(c *Core) *migrate.Migrate {
+
+	m, err := migrate.New(
+		fmt.Sprintf("file://%s", c.config.Migration.Path),
+		c.config.Postgres.URL,
+	)
+	if err != nil {
+		c.logger.Error("Failed to create migration", zap.Error(err))
+		return nil
+	}
+
+	return m
 }
