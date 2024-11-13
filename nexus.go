@@ -227,6 +227,10 @@ func ProvideMigration(c *Core) *migrate.Migrate {
 		connStr += fmt.Sprintf("/%s", c.config.Postgres.Name)
 	}
 
+	if c.config.Postgres.SSLMode != "" {
+		connStr += fmt.Sprintf("?sslmode=%s", c.config.Postgres.SSLMode)
+	}
+
 	m, err := migrate.New(
 		fmt.Sprintf("file://%s", c.config.Migration.Path),
 		connStr,
