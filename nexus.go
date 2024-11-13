@@ -5,12 +5,11 @@ package nexus
 import (
 	"context"
 	"fmt"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-
-	"cloud.google.com/go/storage"
 
 	"github.com/nats-io/nats.go"
 	"github.com/redis/go-redis/v9"
@@ -19,8 +18,6 @@ import (
 	"github.com/stripe/stripe-go/v80/client"
 
 	"go.uber.org/zap"
-
-	"google.golang.org/api/option"
 
 	"goflare.io/nexus/driver"
 )
@@ -57,12 +54,6 @@ type Core struct {
 
 	// stripeClient is the Stripe client
 	stripeClient *client.API
-
-	// storageClient is the Google Cloud Storage client
-	storageClient *storage.Client
-
-	// storageBucket is the Google Cloud Storage bucket
-	storageBucket *storage.BucketHandle
 
 	// logger is the logger
 	logger *zap.Logger
@@ -126,18 +117,6 @@ func (c *Core) New() error {
 		c.stripeClient = client.New(c.config.Stripe.SecretKey, nil)
 	}
 
-	if c.config.Google.ServiceAccountKeyPath != "" {
-		client, err := storage.NewClient(context.Background(), option.WithCredentialsFile(c.config.Google.ServiceAccountKeyPath))
-		if err != nil {
-			return nil
-		}
-		c.storageClient = client
-
-		if c.config.Google.StorageBucket != "" {
-			c.storageBucket = c.storageClient.Bucket(c.config.Google.StorageBucket)
-		}
-	}
-
 	c.logger.Info("All components Newd successfully")
 	return nil
 }
@@ -189,14 +168,6 @@ func ProvideStripeClient(c *Core) *client.API {
 
 func ProvideLogger(c *Core) *zap.Logger {
 	return c.logger
-}
-
-func ProvideStorageClient(c *Core) *storage.Client {
-	return c.storageClient
-}
-
-func ProvideStorageBucket(c *Core) *storage.BucketHandle {
-	return c.storageBucket
 }
 
 func ProvideConfig(c *Core) *Config {

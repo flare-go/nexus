@@ -54,6 +54,8 @@ type Config struct {
 	// Google defines the configuration for Google Cloud
 	Google cloud.GoogleConfig `yaml:"google"`
 
+	CloudFlare cloud.CFConfig `yaml:"cloudflare"`
+
 	// Firebase defines the configuration for Firebase
 	Firebase cloud.FirebaseConfig `yaml:"firebase"`
 
