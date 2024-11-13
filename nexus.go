@@ -183,7 +183,7 @@ func ProvideS3(c *Core) (*s3.S3, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Credentials:      credentials.NewStaticCredentials(c.config.CloudFlare.AccessKey, c.config.CloudFlare.SecretKey, ""),
 		Region:           aws.String("auto"),
-		Endpoint:         aws.String("https://goflare.io"),
+		Endpoint:         aws.String(c.config.CloudFlare.Endpoint),
 		S3ForcePathStyle: aws.Bool(true),
 	})
 
