@@ -228,7 +228,7 @@ func ProvideMigration(c *Core) *migrate.Migrate {
 
 	m, err := migrate.New(
 		fmt.Sprintf("file://%s", c.config.Migration.Path),
-		c.config.Postgres.URL,
+		connStr,
 	)
 	if err != nil {
 		c.logger.Error("Failed to create migration", zap.Error(err))
