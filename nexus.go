@@ -204,6 +204,28 @@ func ProvideConfig(c *Core) *Config {
 
 func ProvideMigration(c *Core) *migrate.Migrate {
 
+	connStr := c.config.Postgres.URL
+
+	if c.config.Postgres.Username != "" && c.config.Postgres.Password != "" {
+		connStr += fmt.Sprintf("%s:%s@", c.config.Postgres.Username, c.config.Postgres.Password)
+	}
+
+	if c.config.Postgres.Username != "" && c.config.Postgres.Password == "" {
+		connStr += fmt.Sprintf("%s@", c.config.Postgres.Username)
+	}
+
+	if c.config.Postgres.Host != "" {
+		connStr += fmt.Sprintf("%s:", c.config.Postgres.Host)
+	}
+
+	if c.config.Postgres.Port != "" {
+		connStr += fmt.Sprintf("%s", c.config.Postgres.Port)
+	}
+
+	if c.config.Postgres.Name != "" {
+		connStr += fmt.Sprintf("/%s", c.config.Postgres.Name)
+	}
+
 	m, err := migrate.New(
 		fmt.Sprintf("file://%s", c.config.Migration.Path),
 		c.config.Postgres.URL,
