@@ -56,6 +56,8 @@ type Core struct {
 	// natsConn is the NATS connection
 	natsConn *nats.Conn
 
+	natsManager driver.NatsManager
+
 	// stripeClient is the Stripe client
 	stripeClient *client.API
 

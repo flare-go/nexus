@@ -9,7 +9,10 @@ import (
 	"time"
 
 	"github.com/nats-io/nats.go"
+
 	"go.uber.org/zap"
+
+	"goflare.io/nexus/worker"
 )
 
 // NatsConfig 定義 NATS 配置
@@ -20,29 +23,7 @@ type NatsConfig struct {
 	MaxAge     time.Duration `yaml:"max_age"`
 	MaxMsgs    int64         `yaml:"max_msgs"`
 	MaxBytes   int64         `yaml:"max_bytes"`
-}
-
-// NatsManager 定義 JetStream 管理器的接口
-type NatsManager interface {
-	Publish(ctx context.Context, subject string, data []byte) error
-	Subscribe(subject string, handler nats.MsgHandler, opts ...nats.SubOpt) (*nats.Subscription, error)
-	HealthCheck(ctx context.Context) error
-	Close() error
-}
-
-// NatsOption 定義可選配置
-type NatsOption struct {
-	Logger *zap.Logger
-	Config NatsConfig
-}
-
-// jetStreamNatsManager 實現 NatsManager 接口
-type jetStreamNatsManager struct {
-	nc     *nats.Conn
-	js     nats.JetStreamContext
-	logger *zap.Logger
-	config NatsConfig
-	mu     sync.RWMutex
+	Worker     worker.Config `yaml:"worker"` // 添加 worker 配置
 }
 
 // DefaultConfig 返回默認配置
@@ -53,32 +34,52 @@ func DefaultConfig(name, subject string) NatsConfig {
 		MaxAge:     24 * time.Hour,
 		MaxMsgs:    10000,
 		MaxBytes:   1024 * 1024 * 1024,
+		Worker:     worker.DefaultConfig(),
 	}
 }
 
-// NewNatsManager 創建新的 JetStream 管理器
-func NewNatsManager(nc *nats.Conn, opts NatsOption) (NatsManager, error) {
-	if nc == nil {
-		return nil, errors.New("nats connection is required")
-	}
+// NatsManager 定義 JetStream 管理器的接口
+type NatsManager interface {
+	Publish(ctx context.Context, subject string, data []byte) error
+	Subscribe(subject string, handler nats.MsgHandler, opts ...nats.SubOpt) (*nats.Subscription, error)
+	HealthCheck() error
+	GetMetrics() map[string]any
+	Close() error
+}
 
-	if opts.Logger == nil {
-		opts.Logger = zap.NewNop()
-	}
+// jetStreamNatsManager 實現 NatsManager 接口
+type jetStreamNatsManager struct {
+	nc     *nats.Conn
+	js     nats.JetStreamContext
+	logger *zap.Logger
+	config NatsConfig
+	pool   *worker.Pool
+	mu     sync.RWMutex
+}
+
+// NewNatsManager 創建新的 JetStream 管理器
+func NewNatsManager(
+	nc *nats.Conn,
+	config NatsConfig,
+	pool *worker.Pool,
+	logger *zap.Logger) (NatsManager, error) {
 
 	js, err := nc.JetStream()
 	if err != nil {
+		pool.Release()
 		return nil, fmt.Errorf("failed to get jetstream context: %w", err)
 	}
 
 	mgr := &jetStreamNatsManager{
 		nc:     nc,
 		js:     js,
-		logger: opts.Logger,
-		config: opts.Config,
+		logger: logger,
+		config: config,
+		pool:   pool,
 	}
 
 	if err = mgr.setupStream(); err != nil {
+		pool.Release()
 		if errors.Is(err, nats.ErrJetStreamNotEnabled) {
 			return nil, fmt.Errorf("jetstream not enabled: %w", err)
 		}
@@ -158,6 +159,33 @@ func (m *jetStreamNatsManager) isStreamConfigDifferent(a, b nats.StreamConfig) b
 		!stringSlicesEqual(a.Subjects, b.Subjects)
 }
 
+// Subscribe 使用 worker pool 處理訂閱
+func (m *jetStreamNatsManager) Subscribe(subject string, handler nats.MsgHandler, opts ...nats.SubOpt) (*nats.Subscription, error) {
+	// 使用 worker pool 包裝 handler
+	wrappedHandler := func(msg *nats.Msg) {
+		err := m.pool.Submit(context.Background(), func() {
+			handler(msg)
+		})
+		if err != nil {
+			m.logger.Error("failed to submit message to worker pool",
+				zap.Error(err),
+				zap.String("subject", subject))
+			// 如果提交失敗，不確認消息，允許重新投遞
+			return
+		}
+	}
+
+	// 合併默認選項和自定義選項
+	allOpts := m.getSubscriptionNatsOption(opts...)
+
+	sub, err := m.js.Subscribe(subject, wrappedHandler, allOpts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to subscribe: %w", err)
+	}
+
+	return sub, nil
+}
+
 func (m *jetStreamNatsManager) Publish(ctx context.Context, subject string, data []byte) error {
 	const (
 		maxRetries = 3
@@ -202,10 +230,6 @@ func (m *jetStreamNatsManager) publishWithTimeout(ctx context.Context, subject s
 	return nil
 }
 
-func (m *jetStreamNatsManager) Subscribe(subject string, handler nats.MsgHandler, opts ...nats.SubOpt) (*nats.Subscription, error) {
-	return m.js.Subscribe(subject, handler, opts...)
-}
-
 func (m *jetStreamNatsManager) getSubscriptionNatsOption(opts ...nats.SubOpt) []nats.SubOpt {
 	defaultOpts := []nats.SubOpt{
 		nats.ManualAck(),
@@ -220,7 +244,7 @@ func (m *jetStreamNatsManager) getDurableName(subject string) string {
 	return fmt.Sprintf("CHECKOUT_%s", strings.ReplaceAll(subject, ".", "_"))
 }
 
-func (m *jetStreamNatsManager) HealthCheck(ctx context.Context) error {
+func (m *jetStreamNatsManager) HealthCheck() error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -233,14 +257,36 @@ func (m *jetStreamNatsManager) HealthCheck(ctx context.Context) error {
 	return nil
 }
 
+// GetMetrics 返回組合的指標
+func (m *jetStreamNatsManager) GetMetrics() map[string]any {
+	metrics := m.pool.GetMetrics()
+
+	// 獲取 stream 信息
+	streamInfo, err := m.js.StreamInfo(m.config.StreamName)
+	if err == nil && streamInfo != nil {
+		metrics["stream_messages"] = streamInfo.State.Msgs
+		metrics["stream_bytes"] = streamInfo.State.Bytes
+		metrics["stream_consumers"] = streamInfo.State.Consumers
+	}
+
+	return metrics
+}
+
+// Close 實現優雅關閉
 func (m *jetStreamNatsManager) Close() error {
+	// 先關閉 worker pool
+	if m.pool != nil {
+		m.pool.Release()
+	}
+
+	// 再關閉 NATS 連接
 	if m.nc != nil {
 		m.nc.Close()
 	}
+
 	return nil
 }
 
-// 輔助函數
 func (m *jetStreamNatsManager) checkMessageLimit(streamInfo *nats.StreamInfo) {
 	usagePercentage := float64(streamInfo.State.Msgs) / float64(streamInfo.Config.MaxMsgs) * 100
 	if usagePercentage >= 90 {

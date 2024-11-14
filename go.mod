@@ -36,6 +36,7 @@ require (
 	github.com/mmcloughlin/meow v0.0.0-20200201185800-3501c7c05d21 // indirect
 	github.com/nats-io/nkeys v0.4.7 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
+	github.com/panjf2000/ants/v2 v2.10.0 // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
 	github.com/tmthrgd/go-hex v0.0.0-20190904060850-447a3041c3bc // indirect
 	github.com/vmihailenco/bufpool v0.1.11 // indirect
