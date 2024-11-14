@@ -67,7 +67,7 @@ func NewPool(cfg Config, logger *zap.Logger) (*Pool, error) {
 
 // Submit submits a task to the worker pool
 // Returns error if submission fails or context is canceled
-func (p *Pool) Submit(ctx context.Context, task func()) error {
+func (p *Pool) Submit(ctx context.Context, task func() error) error {
 	// Check context before submission
 	select {
 	case <-ctx.Done():
@@ -93,7 +93,9 @@ func (p *Pool) Submit(ctx context.Context, task func()) error {
 		}()
 
 		p.metrics.RunningTasks.Add(1)
-		task()
+		if err := task(); err != nil {
+			p.metrics.FailedTasks.Add(1)
+		}
 		p.metrics.CompletedTasks.Add(1)
 	}
 

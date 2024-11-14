@@ -15,6 +15,8 @@ import (
 	"goflare.io/nexus/worker"
 )
 
+type NatsHandler func(ctx context.Context, event *nats.Msg) error
+
 // NatsConfig 定義 NATS 配置
 type NatsConfig struct {
 	URL        string        `yaml:"url"`
@@ -41,7 +43,7 @@ func DefaultConfig(name, subject string) NatsConfig {
 // NatsManager 定義 JetStream 管理器的接口
 type NatsManager interface {
 	Publish(ctx context.Context, subject string, data []byte) error
-	Subscribe(subject string, handler nats.MsgHandler, opts ...nats.SubOpt) (*nats.Subscription, error)
+	Subscribe(subject string, handler NatsHandler, opts ...nats.SubOpt) (*nats.Subscription, error)
 	HealthCheck() error
 	GetMetrics() map[string]any
 	Close() error
@@ -160,13 +162,17 @@ func (m *jetStreamNatsManager) isStreamConfigDifferent(a, b nats.StreamConfig) b
 }
 
 // Subscribe 使用 worker pool 處理訂閱
-func (m *jetStreamNatsManager) Subscribe(subject string, handler nats.MsgHandler, opts ...nats.SubOpt) (*nats.Subscription, error) {
+func (m *jetStreamNatsManager) Subscribe(subject string, handler NatsHandler, opts ...nats.SubOpt) (*nats.Subscription, error) {
 	// 使用 worker pool 包裝 handler
 	wrappedHandler := func(msg *nats.Msg) {
-		err := m.pool.Submit(context.Background(), func() {
-			handler(msg)
-		})
-		if err != nil {
+		if err := m.pool.Submit(context.Background(), func() error {
+			if err := handler(context.Background(), msg); err != nil {
+				m.logger.Error("failed to handle message",
+					zap.Error(err),
+					zap.String("subject", subject))
+			}
+			return nil
+		}); err != nil {
 			m.logger.Error("failed to submit message to worker pool",
 				zap.Error(err),
 				zap.String("subject", subject))
