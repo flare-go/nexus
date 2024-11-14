@@ -239,6 +239,9 @@ func (m *jetStreamNatsManager) Publish(ctx context.Context, subject string, data
 func (m *jetStreamNatsManager) publishWithTimeout(ctx context.Context, subject string, data []byte) error {
 	ack, err := m.js.Publish(subject, data, nats.Context(ctx))
 	if err != nil {
+		m.logger.Error("failed to publish message",
+			zap.Error(err),
+			zap.String("subject", subject))
 		return err
 	}
 
