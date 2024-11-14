@@ -21,7 +21,6 @@ type NatsHandler func(ctx context.Context, event *nats.Msg) error
 type NatsConfig struct {
 	URL        string        `yaml:"url"`
 	StreamName string        `yaml:"stream_name"`
-	Subject    string        `yaml:"subject"`
 	MaxAge     time.Duration `yaml:"max_age"`
 	MaxMsgs    int64         `yaml:"max_msgs"`
 	MaxBytes   int64         `yaml:"max_bytes"`
@@ -29,10 +28,9 @@ type NatsConfig struct {
 }
 
 // DefaultConfig 返回默認配置
-func DefaultConfig(name, subject string) NatsConfig {
+func DefaultConfig(name string) NatsConfig {
 	return NatsConfig{
 		StreamName: name,
-		Subject:    subject,
 		MaxAge:     24 * time.Hour,
 		MaxMsgs:    10000,
 		MaxBytes:   1024 * 1024 * 1024,
@@ -97,7 +95,6 @@ func (m *jetStreamNatsManager) setupStream() error {
 
 	config := &nats.StreamConfig{
 		Name:      m.config.StreamName,
-		Subjects:  []string{m.config.Subject},
 		Storage:   nats.MemoryStorage,
 		Retention: nats.WorkQueuePolicy,
 		MaxAge:    m.config.MaxAge,
@@ -109,8 +106,14 @@ func (m *jetStreamNatsManager) setupStream() error {
 }
 
 func (m *jetStreamNatsManager) createOrUpdateStream(config *nats.StreamConfig) error {
+
+	m.logger.Info("creating or updating stream",
+		zap.String("name", config.Name))
 	stream, err := m.js.StreamInfo(config.Name)
 	if err != nil {
+		m.logger.Info("failed to get stream info",
+			zap.Error(err),
+			zap.String("name", config.Name))
 		if errors.Is(err, nats.ErrStreamNotFound) {
 			return m.createStream(config)
 		}
@@ -121,8 +124,13 @@ func (m *jetStreamNatsManager) createOrUpdateStream(config *nats.StreamConfig) e
 }
 
 func (m *jetStreamNatsManager) createStream(config *nats.StreamConfig) error {
-	_, err := m.js.AddStream(config)
-	if err != nil {
+
+	m.logger.Info("creating stream",
+		zap.String("name", config.Name))
+	if _, err := m.js.AddStream(config); err != nil {
+		m.logger.Warn("failed to create stream",
+			zap.Error(err),
+			zap.String("name", config.Name))
 		if strings.Contains(err.Error(), "subjects overlap") {
 			m.logger.Info("using existing stream with overlapping subjects",
 				zap.String("name", config.Name))
@@ -137,12 +145,14 @@ func (m *jetStreamNatsManager) createStream(config *nats.StreamConfig) error {
 }
 
 func (m *jetStreamNatsManager) updateStreamIfNeeded(stream *nats.StreamInfo, config *nats.StreamConfig) error {
+
 	if !m.isStreamConfigDifferent(stream.Config, *config) {
+		m.logger.Info("stream config is up to date",
+			zap.String("name", config.Name))
 		return nil
 	}
 
-	_, err := m.js.UpdateStream(config)
-	if err != nil {
+	if _, err := m.js.UpdateStream(config); err != nil {
 		m.logger.Warn("failed to update stream config",
 			zap.Error(err),
 			zap.String("name", config.Name))
@@ -158,6 +168,8 @@ func (m *jetStreamNatsManager) isStreamConfigDifferent(a, b nats.StreamConfig) b
 	return a.MaxAge != b.MaxAge ||
 		a.MaxMsgs != b.MaxMsgs ||
 		a.MaxBytes != b.MaxBytes ||
+		a.Storage != b.Storage ||
+		a.Retention != b.Retention ||
 		!stringSlicesEqual(a.Subjects, b.Subjects)
 }
 
