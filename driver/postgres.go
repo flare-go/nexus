@@ -67,15 +67,16 @@ type PostgresTx interface {
 }
 
 type PostgresConfig struct {
-	URL         string `yaml:"url"`
-	Username    string `yaml:"username"`
-	Password    string `yaml:"password"`
-	Host        string `yaml:"host"`
-	Port        string `yaml:"port"`
-	Name        string `yaml:"name"`
-	SSLMode     string `yaml:"ssl_mode"`
-	SSLRootCert string `yaml:"ssl_root_cert"`
-	Cluster     string `yaml:"cluster"`
+	URL              string `yaml:"url"`
+	Username         string `yaml:"username"`
+	Password         string `yaml:"password"`
+	Host             string `yaml:"host"`
+	Port             string `yaml:"port"`
+	Name             string `yaml:"name"`
+	SSLMode          string `yaml:"ssl_mode"`
+	SSLRootCert      string `yaml:"ssl_root_cert"`
+	Cluster          string `yaml:"cluster"`
+	XMigrationsTable string `yaml:"x-migrations-table"`
 }
 
 type DB struct {
@@ -113,6 +114,10 @@ func ConnectSQL(config PostgresConfig) (*DB, error) {
 
 	if config.SSLMode != "" {
 		connStr += fmt.Sprintf("?sslmode=%s", config.SSLMode)
+	}
+
+	if config.XMigrationsTable != "" {
+		connStr += fmt.Sprintf("&x-migrations-table=%s", config.XMigrationsTable)
 	}
 
 	pgConfig, err := pgxpool.ParseConfig(connStr)

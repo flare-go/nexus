@@ -226,6 +226,10 @@ func ProvideMigration(c *Core) *migrate.Migrate {
 		connStr += fmt.Sprintf("?sslmode=%s", c.config.Postgres.SSLMode)
 	}
 
+	if c.config.Postgres.XMigrationsTable != "" {
+		connStr += fmt.Sprintf("&x-migrations-table=%s", c.config.Postgres.XMigrationsTable)
+	}
+
 	m, err := migrate.New(
 		fmt.Sprintf("file://%s", c.config.Migration.Path),
 		connStr,
