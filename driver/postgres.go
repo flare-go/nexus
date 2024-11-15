@@ -116,10 +116,6 @@ func ConnectSQL(config PostgresConfig) (*DB, error) {
 		connStr += fmt.Sprintf("?sslmode=%s", config.SSLMode)
 	}
 
-	if config.XMigrationsTable != "" {
-		connStr += fmt.Sprintf("&x-migrations-table=%s", config.XMigrationsTable)
-	}
-
 	pgConfig, err := pgxpool.ParseConfig(connStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse connection string: %w", err)
