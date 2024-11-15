@@ -21,6 +21,7 @@ type NatsHandler func(ctx context.Context, event *nats.Msg) error
 type NatsConfig struct {
 	URL        string        `yaml:"url"`
 	StreamName string        `yaml:"stream_name"`
+	Subjects   []string      `yaml:"subjects"`
 	MaxAge     time.Duration `yaml:"max_age"`
 	MaxMsgs    int64         `yaml:"max_msgs"`
 	MaxBytes   int64         `yaml:"max_bytes"`
@@ -28,9 +29,10 @@ type NatsConfig struct {
 }
 
 // DefaultConfig 返回默認配置
-func DefaultConfig(name string) NatsConfig {
+func DefaultConfig(name, subject string) NatsConfig {
 	return NatsConfig{
 		StreamName: name,
+		Subjects:   []string{subject},
 		MaxAge:     24 * time.Hour,
 		MaxMsgs:    10000,
 		MaxBytes:   1024 * 1024 * 1024,
@@ -95,6 +97,7 @@ func (m *jetStreamNatsManager) setupStream() error {
 
 	config := &nats.StreamConfig{
 		Name:      m.config.StreamName,
+		Subjects:  m.config.Subjects,
 		Storage:   nats.MemoryStorage,
 		Retention: nats.WorkQueuePolicy,
 		MaxAge:    m.config.MaxAge,
